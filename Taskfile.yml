@@ -1,0 +1,76 @@
+version: "3"
+
+vars:
+  RUNNER:
+    sh: 'echo {{ .RUNNER | default "" }}'
+  SOURCES: src tests main.py
+  SOURCES_ROOT: src
+
+tasks:
+  default:
+    cmd:
+      task: all
+
+  .pdm:
+    internal: true
+    desc: Ensure that PDM is installed
+    silent: true
+    preconditions: []
+#      - sh: pdm -V
+#        msg: "Please install PDM: https://pdm.fming.dev/latest/#installation"
+
+  helm-lint:
+    desc: "Lint helm chart"
+    dir: ".k8s/app"
+    cmds:
+      - "helm lint"
+      - cmd: "helm lint -f values.yaml"
+
+
+  lint:
+    desc: Lint python source files
+    deps: [.pdm]
+    cmds:
+      - "{{.RUNNER}} ruff check {{.SOURCES}}"
+      - "{{.RUNNER}} ruff format --check --diff {{.SOURCES}}"
+
+  format:
+    desc: Format python source files
+    aliases: ["fmt"]
+    deps: [.pdm]
+    cmds:
+      - "{{.RUNNER}} ruff format {{ .SOURCES }}"
+      - "{{.RUNNER}} ruff check --fix {{.SOURCES}}"
+
+  deptry:
+    desc: Check used dependencies with deptry
+    deps: [.pdm]
+    silent: true
+    cmd: "{{.RUNNER}} deptry {{.SOURCES_ROOT}}"
+
+  typecheck:
+    desc: Perform type-checking
+    deps: [.pdm]
+    silent: true
+    cmd: "{{.RUNNER}} mypy {{.SOURCES}}"
+
+  test:
+    desc: Run tests
+    deps: [.pdm]
+    cmd: "{{.RUNNER}} coverage run"
+
+  testcov:
+    desc: Run tests and generate a coverage report
+    silent: true
+    cmds:
+      - task: test
+      - "{{.RUNNER}} coverage report -m"
+      - "{{.RUNNER}} coverage xml"
+
+  all:
+    desc: Run the standard set of checks performed in CI
+    cmds:
+      - task: format
+      - task: deptry
+      - task: typecheck
+      - task: testcov
