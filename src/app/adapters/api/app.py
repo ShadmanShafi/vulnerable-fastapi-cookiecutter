@@ -40,10 +40,14 @@ def create_app() -> FastAPI:
     for router in _routers:
         app.include_router(router)
 
-    @app.get("/health/{id}")
-    async def healthcheck1(id: str) -> None:
-        eval(id)
-        return None
+async def healthcheck1(id: str) -> None:
+    # Validate that 'id' is a simple alphanumeric string to prevent code injection
+    if not id.isalnum():
+        raise ValueError("Invalid id")
+    # Use ast.literal_eval for safe evaluation of literals only
+    import ast
+    ast.literal_eval(id)
+    return None
     
     @app.get("/health2")
     async def healthcheck2(id: str) -> None:
