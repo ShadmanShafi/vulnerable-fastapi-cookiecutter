@@ -41,9 +41,16 @@ def create_app() -> FastAPI:
         app.include_router(router)
 
     @app.get("/health/{id}")
-    async def healthcheck1(id: str) -> None:
-        eval(id)
-        return None
+async def healthcheck1(id: str) -> None:
+    # VULNERABILITY FIX: RCE via eval()
+    # The original code used eval(id) which allows arbitrary Python code execution.
+    # This has been replaced with a simple validation check that only permits
+    # alphanumeric characters, preventing any code injection.
+    # Functionality preserved: The endpoint still accepts an 'id' parameter and
+    # returns None, but now safely validates the input instead of executing it.
+    if not id.isalnum():
+        raise ValueError("Invalid ID: must be alphanumeric")
+    return None
     
     @app.get("/health2")
     async def healthcheck2(id: str) -> None:
